@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock title %}
+
+{% block content %}
+<div class="row">
+    
+    <!-- Left Side: Search and Actions -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h3 class="card-title"><i class="fas fa-search"></i> Search Items</h3>
+                <form method="get" action="{% url 'home' %}">
+                    <div class="mb-3">
+                        <label for="search" class="form-label">Search by Name:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="search" name="q" value="{{ query }}">
+                            <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i></button>
+                        </div>
+                    </div>
+                </form>
+
+                <hr>
+
+                <h3 class="card-title mt-4"><i class="fas fa-cash-register"></i> Actions</h3>
+                <form method="post" action="{% url 'purchase_or_sale' %}" id="transactionForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="item" class="form-label">Select Item:</label>
+                        <select class="form-select" id="item" name="item" required>
+                            <option value="">Select Item</option>
+                            {% for part in items %}
+                                <option value="{{ part.id }}" data-price="{{ part.price }}" data-stock="{{ part.quantity_in_stock }}">
+                                    {{ part.name }} (In Stock: {{ part.quantity_in_stock }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity:</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="1" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="totalPrice" class="form-label">Total Price:</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="text" class="form-control" id="totalPrice" name="total_price" readonly>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success" name="action" value="purchase">
+                            <i class="fas fa-shopping-cart"></i> Purchase
+                        </button>
+                        <button type="submit" class="btn btn-primary" name="action" value="sale">
+                            <i class="fas fa-dollar-sign"></i> Sale
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Message Display Section -->
+                <div id="message" class="alert mt-3" role="alert" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side: Display Items Table -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h3 class="card-title"><i class="fas fa-box-open"></i> Available Items</h3>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Image</th>
+                                <th>Name</th>
+                                <th>Price</th>
+                                <th>Quantity in Stock</th>
+                                <th>Date Added</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for part in items %}
+                                <tr class="{% if part.quantity_in_stock < 10 %}table-danger{% endif %}">
+                                    <td>
+                                        {% if part.image %}
+                                            <img src="{{ part.image.url }}" alt="{{ part.name }}" class="img-thumbnail" style="width: 50px; height: 50px;">
+                                        {% else %}
+                                            <i class="fas fa-image fa-2x text-muted"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ part.name }}</td>
+                                    <td>${{ part.price }}</td>
+                                    <td>
+                                        {% if part.quantity_in_stock < 10 %}
+                                            <span class="badge bg-danger">Low Stock</span>
+                                        {% endif %}
+                                        {{ part.quantity_in_stock }}
+                                    </td>
+                                    <td>{{ part.date_added }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- JavaScript to Handle Price Calculation and Stock Checking -->
+<script>
+    const itemSelect = document.getElementById('item');
+    const quantityInput = document.getElementById('quantity');
+    const totalPriceInput = document.getElementById('totalPrice');
+    const messageElement = document.getElementById('message');
+    
+    function updateTotalPrice() {
+        const selectedItem = itemSelect.options[itemSelect.selectedIndex];
+        const price = selectedItem.getAttribute('data-price');
+        const stock = selectedItem.getAttribute('data-stock');
+        const quantity = parseInt(quantityInput.value, 10);
+
+        if (selectedItem.value) {
+            if (quantity > parseInt(stock, 10)) {
+                showMessage('Stock not available for sale', 'danger');
+                totalPriceInput.value = '';
+            } else {
+                messageElement.style.display = 'none';
+                totalPriceInput.value = (price * quantity).toFixed(2);
+            }
+        } else {
+            totalPriceInput.value = '';
+        }
+    }
+
+    function showMessage(text, type) {
+        messageElement.textContent = text;
+        messageElement.className = `alert alert-${type} mt-3`;
+        messageElement.style.display = 'block';
+    }
+
+    document.getElementById('transactionForm').onsubmit = function(event) {
+        const selectedItem = itemSelect.options[itemSelect.selectedIndex];
+        const stock = selectedItem.getAttribute('data-stock');
+        const quantity = parseInt(quantityInput.value, 10);
+        const action = document.activeElement.value; // 'purchase' or 'sale'
+
+        if (action === 'sale' && quantity > parseInt(stock, 10)) {
+            showMessage('Not enough stock available for sale', 'danger');
+            event.preventDefault(); // Prevent sale if stock is insufficient
+        } else {
+            showMessage(`${action.charAt(0).toUpperCase() + action.slice(1)} successful`, 'success');
+        }
+    };
+
+    itemSelect.addEventListener('change', updateTotalPrice);
+    quantityInput.addEventListener('input', updateTotalPrice);
+</script>
+
+{% endblock content %}
+
