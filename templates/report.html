@@ -50,6 +50,7 @@
 
                     {% if sales %}
                         <p class="fw-bold">Total Sales: <span class="text-success">{{ total_sales }}</span></p>
+                        <p class="fw-bold">Total Sale Profit: <span class="text-success">{{ total_sale_profit }}</span></p>
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
                                 <thead class="table-dark">
@@ -92,6 +93,7 @@
                 <div class="card-body">
                     {% if purchases %}
                         <p class="fw-bold">Total Purchases: <span class="text-danger">{{ total_purchases }}</span></p>
+                        <p class="fw-bold">Total Purchase Profit: <span class="text-danger">{{ total_purchase_profit }}</span></p>
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
                                 <thead class="table-dark">
@@ -131,9 +133,9 @@
             <div class="card bg-light">
                 <div class="card-body">
                     <h3 class="card-title">
-                        <i class="fas fa-dollar-sign me-2"></i>Profit: 
-                        <span class="{% if profit > 0 %}text-success{% elif profit < 0 %}text-danger{% else %}text-muted{% endif %}">
-                            {{ profit }}
+                        <i class="fas fa-dollar-sign me-2"></i>Total Profit: 
+                        <span class="{% if total_profit > 0 %}text-success{% elif total_profit < 0 %}text-danger{% else %}text-muted{% endif %}">
+                            {{ total_profit }}
                         </span>
                     </h3>
                 </div>

@@ -79,12 +79,17 @@ from django.db.models import Sum
 from datetime import datetime
 from django.db.models import Sum
 
+from datetime import datetime
+from django.db.models import Sum
+
 @login_required
 def report_view(request):
     # Initialize empty lists for reports and profit
     sales = []
     purchases = []
     profit = 0
+    total_sale_profit = 0
+    total_purchase_profit = 0
 
     # Default date range (last 30 days)
     start_date = request.GET.get('start_date', None)
@@ -111,13 +116,17 @@ def report_view(request):
     total_purchases = purchases.aggregate(total=Sum('total_price'))['total'] or 0
     profit = total_sales - total_purchases
 
-    # Calculate profit for each sale and purchase
+    # Calculate profit for each sale and purchase, and calculate total profit for sales and purchases
     for sale in sales:
         sale.profit = (sale.sale_price - sale.item.price) * sale.quantity
+        total_sale_profit += sale.profit
 
     for purchase in purchases:
-        # Reversed profit formula for purchases
         purchase.profit = (purchase.item.price - purchase.purchase_price) * purchase.quantity
+        total_purchase_profit += purchase.profit
+
+    # Total profit (Sale Profit + Purchase Profit)
+    total_profit = total_sale_profit + total_purchase_profit
 
     # If no records found, show a message
     no_records_message = "No records found for the selected date range." if not sales and not purchases else ""
@@ -128,6 +137,9 @@ def report_view(request):
         'total_sales': total_sales,
         'total_purchases': total_purchases,
         'profit': profit,
+        'total_sale_profit': total_sale_profit,
+        'total_purchase_profit': total_purchase_profit,
+        'total_profit': total_profit,
         'no_records_message': no_records_message,
     }
 
