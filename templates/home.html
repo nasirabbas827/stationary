@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="row">
-    
+
     <!-- Left Side: Search and Actions -->
     <div class="col-md-4 mb-4">
         <div class="card">
@@ -43,10 +43,18 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="totalPrice" class="form-label">Total Price:</label>
+                        <label for="purchasePrice" class="form-label">Purchase Price:</label>
                         <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="text" class="form-control" id="totalPrice" name="total_price" readonly>
+                            <span class="input-group-text">Pkr</span>
+                            <input type="number" class="form-control" id="purchasePrice" name="purchase_price" step="0.01" min="0" value="0" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="salePrice" class="form-label">Sale Price:</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Pkr</span>
+                            <input type="number" class="form-control" id="salePrice" name="sale_price" step="0.01" min="0" value="0" required>
                         </div>
                     </div>
 
@@ -79,7 +87,6 @@
                                 <th>Name</th>
                                 <th>Price</th>
                                 <th>Quantity in Stock</th>
-                                <th>Date Added</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -93,14 +100,13 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ part.name }}</td>
-                                    <td>${{ part.price }}</td>
+                                    <td>Pkr{{ part.price }}</td>
                                     <td>
                                         {% if part.quantity_in_stock < 10 %}
                                             <span class="badge bg-danger">Low Stock</span>
                                         {% endif %}
                                         {{ part.quantity_in_stock }}
                                     </td>
-                                    <td>{{ part.date_added }}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -112,29 +118,51 @@
 
 </div>
 
-<!-- JavaScript to Handle Price Calculation and Stock Checking -->
 <script>
     const itemSelect = document.getElementById('item');
     const quantityInput = document.getElementById('quantity');
+    const purchasePriceInput = document.getElementById('purchasePrice');
+    const salePriceInput = document.getElementById('salePrice');
     const totalPriceInput = document.getElementById('totalPrice');
     const messageElement = document.getElementById('message');
-    
+
     function updateTotalPrice() {
         const selectedItem = itemSelect.options[itemSelect.selectedIndex];
-        const price = selectedItem.getAttribute('data-price');
-        const stock = selectedItem.getAttribute('data-stock');
-        const quantity = parseInt(quantityInput.value, 10);
+        const stock = selectedItem ? selectedItem.getAttribute('data-stock') : null;
+        const quantity = parseInt(quantityInput.value || 0, 10);
+        const purchasePrice = parseFloat(purchasePriceInput.value || 0);
+        const salePrice = parseFloat(salePriceInput.value || 0);
 
-        if (selectedItem.value) {
-            if (quantity > parseInt(stock, 10)) {
-                showMessage('Stock not available for sale', 'danger');
-                totalPriceInput.value = '';
-            } else {
-                messageElement.style.display = 'none';
-                totalPriceInput.value = (price * quantity).toFixed(2);
+        // Reset total price and message
+        totalPriceInput.value = '';
+        messageElement.style.display = 'none';
+
+        if (!selectedItem.value) {
+            showMessage('Please select an item.', 'danger');
+            return;
+        }
+
+        if (quantity <= 0) {
+            showMessage('Quantity must be greater than 0.', 'danger');
+            return;
+        }
+
+        if (document.activeElement.value === 'purchase') {
+            if (purchasePrice <= 0) {
+                showMessage('Purchase price cannot be Pkr0 or empty. Please enter a valid price.', 'danger');
+                return;
             }
-        } else {
-            totalPriceInput.value = '';
+            totalPriceInput.value = (purchasePrice * quantity).toFixed(2);
+        } else if (document.activeElement.value === 'sale') {
+            if (salePrice <= 0) {
+                showMessage('Sale price cannot be Pkr0 or empty. Please enter a valid price.', 'danger');
+                return;
+            }
+            if (quantity > parseInt(stock, 10)) {
+                showMessage('Not enough stock available for sale.', 'danger');
+                return;
+            }
+            totalPriceInput.value = (salePrice * quantity).toFixed(2);
         }
     }
 
@@ -144,23 +172,40 @@
         messageElement.style.display = 'block';
     }
 
-    document.getElementById('transactionForm').onsubmit = function(event) {
+    document.getElementById('transactionForm').onsubmit = function (event) {
         const selectedItem = itemSelect.options[itemSelect.selectedIndex];
-        const stock = selectedItem.getAttribute('data-stock');
-        const quantity = parseInt(quantityInput.value, 10);
+        const stock = selectedItem ? parseInt(selectedItem.getAttribute('data-stock') || 0, 10) : 0;
+        const quantity = parseInt(quantityInput.value || 0, 10);
+        const purchasePrice = parseFloat(purchasePriceInput.value || 0);
+        const salePrice = parseFloat(salePriceInput.value || 0);
         const action = document.activeElement.value; // 'purchase' or 'sale'
 
-        if (action === 'sale' && quantity > parseInt(stock, 10)) {
-            showMessage('Not enough stock available for sale', 'danger');
-            event.preventDefault(); // Prevent sale if stock is insufficient
-        } else {
-            showMessage(`${action.charAt(0).toUpperCase() + action.slice(1)} successful`, 'success');
+        // Validate before submitting the form
+        if (action === 'purchase' && purchasePrice <= 0) {
+            showMessage('Purchase price cannot be Pkr0 or empty. Please enter a valid price.', 'danger');
+            event.preventDefault();
+            return;
+        }
+
+        if (action === 'sale') {
+            if (salePrice <= 0) {
+                showMessage('Sale price cannot be Pkr0 or empty. Please enter a valid price.', 'danger');
+                event.preventDefault();
+                return;
+            }
+            if (quantity > stock) {
+                showMessage('Not enough stock available for sale.', 'danger');
+                event.preventDefault();
+                return;
+            }
         }
     };
 
     itemSelect.addEventListener('change', updateTotalPrice);
     quantityInput.addEventListener('input', updateTotalPrice);
+    purchasePriceInput.addEventListener('input', updateTotalPrice);
+    salePriceInput.addEventListener('input', updateTotalPrice);
 </script>
 
-{% endblock content %}
 
+{% endblock content %}

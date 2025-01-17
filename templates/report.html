@@ -58,6 +58,7 @@
                                         <th>Quantity</th>
                                         <th>Sale Price</th>
                                         <th>Total Price</th>
+                                        <th>Profit</th> <!-- Added Profit column -->
                                         <th>Date</th>
                                     </tr>
                                 </thead>
@@ -68,6 +69,7 @@
                                             <td>{{ sale.quantity }}</td>
                                             <td>{{ sale.sale_price }}</td>
                                             <td>{{ sale.total_price }}</td>
+                                            <td>{{ sale.profit }}</td> <!-- Display Profit -->
                                             <td>{{ sale.date }}</td>
                                         </tr>
                                     {% endfor %}
@@ -98,6 +100,7 @@
                                         <th>Quantity</th>
                                         <th>Purchase Price</th>
                                         <th>Total Price</th>
+                                        <th>Profit</th> <!-- Added Profit column -->
                                         <th>Date</th>
                                     </tr>
                                 </thead>
@@ -108,6 +111,7 @@
                                             <td>{{ purchase.quantity }}</td>
                                             <td>{{ purchase.purchase_price }}</td>
                                             <td>{{ purchase.total_price }}</td>
+                                            <td>{{ purchase.profit }}</td> <!-- Display Profit -->
                                             <td>{{ purchase.date }}</td>
                                         </tr>
                                     {% endfor %}
@@ -138,4 +142,3 @@
     </div>
 </div>
 {% endblock content %}
-

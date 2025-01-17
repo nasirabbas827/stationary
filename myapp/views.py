@@ -41,23 +41,26 @@ def home(request):
     })
 
 
+
 @login_required
 def purchase_or_sale(request):
     if request.method == 'POST':
-        item_id = request.POST.get('item')  # Corrected to match 'Items' model
+        item_id = request.POST.get('item')
         quantity = int(request.POST.get('quantity'))
         action = request.POST.get('action')
-        
+        purchase_price = float(request.POST.get('purchase_price', 0))
+        sale_price = float(request.POST.get('sale_price', 0))
+
         item = get_object_or_404(Items, id=item_id)
-        
+
         if action == 'purchase':
             # Handle purchase
-            Purchase.objects.create(item=item, quantity=quantity, purchase_price=item.price)
+            Purchase.objects.create(item=item, quantity=quantity, purchase_price=purchase_price)
             messages.success(request, f'Successfully purchased {quantity} units of {item.name}.')
         elif action == 'sale':
             # Handle sale
             if quantity <= item.quantity_in_stock:
-                Sale.objects.create(item=item, quantity=quantity, sale_price=item.price)
+                Sale.objects.create(item=item, quantity=quantity, sale_price=sale_price)
                 messages.success(request, f'Successfully sold {quantity} units of {item.name}.')
             else:
                 messages.error(request, f'Not enough stock for {item.name}.')
@@ -69,6 +72,12 @@ def logout_view(request):
     logout(request)
     return redirect('index')
 
+
+from datetime import datetime
+from django.db.models import Sum
+
+from datetime import datetime
+from django.db.models import Sum
 
 @login_required
 def report_view(request):
@@ -102,6 +111,14 @@ def report_view(request):
     total_purchases = purchases.aggregate(total=Sum('total_price'))['total'] or 0
     profit = total_sales - total_purchases
 
+    # Calculate profit for each sale and purchase
+    for sale in sales:
+        sale.profit = (sale.sale_price - sale.item.price) * sale.quantity
+
+    for purchase in purchases:
+        # Reversed profit formula for purchases
+        purchase.profit = (purchase.item.price - purchase.purchase_price) * purchase.quantity
+
     # If no records found, show a message
     no_records_message = "No records found for the selected date range." if not sales and not purchases else ""
 
@@ -115,6 +132,7 @@ def report_view(request):
     }
 
     return render(request, 'report.html', context)
+
 
 
 @login_required
