@@ -3,59 +3,77 @@ from django.http import HttpResponse
 import csv
 from .models import Category, Items, Sale, Purchase
 from django.utils.timezone import localdate
-
+from django.contrib.admin import DateFieldListFilter
 
 class SaleAdmin(admin.ModelAdmin):
-    list_display = ('item', 'quantity', 'sale_price', 'total_price', 'date')
-    list_filter = ('date',)  # Filter by date
+    list_display = ('item', 'quantity', 'sale_price', 'total_price', 'profit', 'date')
+    list_filter = (('date', DateFieldListFilter), 'item__category')
     search_fields = ('item__name',)
+    list_per_page = 20
+    date_hierarchy = 'date'
+    ordering = ('-date',)
 
-    # CSV export functionality
-    actions = ['export_to_csv']
+    def profit(self, obj):
+        """Calculate profit for a sale."""
+        return (obj.sale_price - obj.item.price) * obj.quantity
+    profit.short_description = 'Profit'
 
-    def export_to_csv(self, request, queryset):
-        # Creating a response with the CSV file
+    actions = ['export_sales_to_csv']
+
+    def export_sales_to_csv(self, request, queryset):
+        """Export selected sales to CSV with profit."""
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="sales.csv"'
+        response['Content-Disposition'] = 'attachment; filename="sales_report.csv"'
 
         writer = csv.writer(response)
-        writer.writerow(['Item', 'Quantity', 'Sale Price', 'Total Price', 'Date'])
+        writer.writerow(['Item', 'Quantity', 'Sale Price', 'Total Price', 'Profit', 'Date'])
 
-        # Write data rows
+        total_profit = 0
         for sale in queryset:
-            writer.writerow([sale.item.name, sale.quantity, sale.sale_price, sale.total_price, sale.date])
+            profit = (sale.sale_price - sale.item.price) * sale.quantity
+            total_profit += profit
+            writer.writerow([sale.item.name, sale.quantity, sale.sale_price, sale.total_price, profit, sale.date])
+        
+        writer.writerow(['', '', '', 'Total Sale Profit', total_profit, ''])
 
         return response
-
-    export_to_csv.short_description = "Export selected sales to CSV"
-
+    export_sales_to_csv.short_description = "Export selected sales to CSV"
 
 class PurchaseAdmin(admin.ModelAdmin):
-    list_display = ('item', 'quantity', 'purchase_price', 'total_price', 'date')
-    list_filter = ('date',)  # Filter by date
+    list_display = ('item', 'quantity', 'purchase_price', 'total_price', 'profit', 'date')
+    list_filter = (('date', DateFieldListFilter), 'item__category')
     search_fields = ('item__name',)
+    list_per_page = 20
+    date_hierarchy = 'date'
+    ordering = ('-date',)
 
-    # CSV export functionality
-    actions = ['export_to_csv']
+    def profit(self, obj):
+        """Calculate profit for a purchase."""
+        return (obj.item.price - obj.purchase_price) * obj.quantity
+    profit.short_description = 'Profit'
 
-    def export_to_csv(self, request, queryset):
-        # Creating a response with the CSV file
+    actions = ['export_purchases_to_csv']
+
+    def export_purchases_to_csv(self, request, queryset):
+        """Export selected purchases to CSV with profit."""
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="purchases.csv"'
+        response['Content-Disposition'] = 'attachment; filename="purchases_report.csv"'
 
         writer = csv.writer(response)
-        writer.writerow(['Item', 'Quantity', 'Purchase Price', 'Total Price', 'Date'])
+        writer.writerow(['Item', 'Quantity', 'Purchase Price', 'Total Price', 'Profit', 'Date'])
 
-        # Write data rows
+        total_profit = 0
         for purchase in queryset:
-            writer.writerow([purchase.item.name, purchase.quantity, purchase.purchase_price, purchase.total_price, purchase.date])
+            profit = (purchase.item.price - purchase.purchase_price) * purchase.quantity
+            total_profit += profit
+            writer.writerow([purchase.item.name, purchase.quantity, purchase.purchase_price, purchase.total_price, profit, purchase.date])
+        
+        writer.writerow(['', '', '', 'Total Purchase Profit', total_profit, ''])
 
         return response
+    export_purchases_to_csv.short_description = "Export selected purchases to CSV"
 
-    export_to_csv.short_description = "Export selected purchases to CSV"
-
-
-# Registering the models with their custom admin classes
+# Register models with their custom admin classes
 admin.site.register(Category)
 admin.site.register(Items)
 admin.site.register(Sale, SaleAdmin)

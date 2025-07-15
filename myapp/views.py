@@ -73,23 +73,19 @@ def logout_view(request):
     return redirect('index')
 
 
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from datetime import datetime
 from django.db.models import Sum
-
-from datetime import datetime
-from django.db.models import Sum
-
-from datetime import datetime
-from django.db.models import Sum
+import csv
+from .models import Sale
 
 @login_required
 def report_view(request):
-    # Initialize empty lists for reports and profit
+    # Initialize empty list for sales and profit
     sales = []
-    purchases = []
-    profit = 0
     total_sale_profit = 0
-    total_purchase_profit = 0
 
     # Default date range (last 30 days)
     start_date = request.GET.get('start_date', None)
@@ -103,49 +99,35 @@ def report_view(request):
             start_date = None
             end_date = None
 
-    # Query based on date range
+    # Query sales based on date range
     if start_date and end_date:
         sales = Sale.objects.filter(date__range=[start_date, end_date])
-        purchases = Purchase.objects.filter(date__range=[start_date, end_date])
     else:
         sales = Sale.objects.all()
-        purchases = Purchase.objects.all()
 
-    # Calculate total sales and purchases
+    # Calculate total sales
     total_sales = sales.aggregate(total=Sum('total_price'))['total'] or 0
-    total_purchases = purchases.aggregate(total=Sum('total_price'))['total'] or 0
-    profit = total_sales - total_purchases
 
-    # Calculate profit for each sale and purchase, and calculate total profit for sales and purchases
+    # Calculate profit for each sale
     for sale in sales:
         sale.profit = (sale.sale_price - sale.item.price) * sale.quantity
         total_sale_profit += sale.profit
 
-    for purchase in purchases:
-        purchase.profit = (purchase.item.price - purchase.purchase_price) * purchase.quantity
-        total_purchase_profit += purchase.profit
-
-    # Total profit (Sale Profit + Purchase Profit)
-    total_profit = total_sale_profit + total_purchase_profit
+    # Total profit is now only from sales
+    total_profit = total_sale_profit
 
     # If no records found, show a message
-    no_records_message = "No records found for the selected date range." if not sales and not purchases else ""
+    no_records_message = "No sales records found for the selected date range." if not sales else ""
 
     context = {
         'sales': sales,
-        'purchases': purchases,
         'total_sales': total_sales,
-        'total_purchases': total_purchases,
-        'profit': profit,
         'total_sale_profit': total_sale_profit,
-        'total_purchase_profit': total_purchase_profit,
         'total_profit': total_profit,
         'no_records_message': no_records_message,
     }
 
     return render(request, 'report.html', context)
-
-
 
 @login_required
 def download_csv(request):
@@ -153,10 +135,10 @@ def download_csv(request):
     end_date = request.POST.get('end_date', None)
     
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="report.csv"'
+    response['Content-Disposition'] = 'attachment; filename="sales_report.csv"'
 
     writer = csv.writer(response)
-    writer.writerow(['Type', 'Item', 'Quantity', 'Price', 'Total Price', 'Date'])
+    writer.writerow(['Type', 'Item', 'Quantity', 'Sale Price', 'Total Price', 'Profit', 'Date'])
 
     if start_date and end_date:
         try:
@@ -168,17 +150,17 @@ def download_csv(request):
 
     if start_date and end_date:
         sales = Sale.objects.filter(date__range=[start_date, end_date])
-        purchases = Purchase.objects.filter(date__range=[start_date, end_date])
     else:
         sales = Sale.objects.all()
-        purchases = Purchase.objects.all()
 
-    # Write sales to CSV
+    # Calculate total sale profit for the CSV
+    total_sale_profit = 0
     for sale in sales:
-        writer.writerow(['Sale', sale.item.name, sale.quantity, sale.sale_price, sale.total_price, sale.date])
+        profit = (sale.sale_price - sale.item.price) * sale.quantity
+        total_sale_profit += profit
+        writer.writerow(['Sale', sale.item.name, sale.quantity, sale.sale_price, sale.total_price, profit, sale.date])
 
-    # Write purchases to CSV
-    for purchase in purchases:
-        writer.writerow(['Purchase', purchase.item.name, purchase.quantity, purchase.purchase_price, purchase.total_price, purchase.date])
+    # Add a row for total sale profit
+    writer.writerow(['', '', '', '', 'Total Sale Profit', total_sale_profit, ''])
 
     return response
